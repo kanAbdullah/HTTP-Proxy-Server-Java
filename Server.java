@@ -39,6 +39,7 @@ public class Server {
                 catch(IOException i)
                 {
                     System.out.println(i);
+                    break;
                 }
             }
             System.out.println("Closing connection");

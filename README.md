@@ -9,3 +9,6 @@ After that run server with this commadn on a command propmt:
 After running server run this command to run the client:
 
 -->    java Client.java
+
+
+*Currently there is no use for ClientHandler class and Program class.
