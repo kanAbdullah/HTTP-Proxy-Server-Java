@@ -6,6 +6,7 @@ public class Server {
     private Socket          socket   = null;
     private ServerSocket    server   = null;
     private DataInputStream in       =  null;
+    DataOutputStream        dout     = null;
  
     // constructor with port
     public Server(int port)
@@ -24,6 +25,9 @@ public class Server {
             // takes input from the client socket
             in = new DataInputStream(
                 new BufferedInputStream(socket.getInputStream()));
+
+            dout  = new DataOutputStream(socket.getOutputStream());
+            
  
             String line = "";
  
@@ -33,8 +37,16 @@ public class Server {
                 try
                 {
                     line = in.readUTF();
+                    int size = parseREquest(line);
                     System.out.println(line);
- 
+
+                    String document = createDocument(size);
+
+                    /*
+                     * send the parsed and created document to the client
+                     */
+
+                    dout.writeUTF(document);
                 }
                 catch(IOException i)
                 {
@@ -46,6 +58,8 @@ public class Server {
  
             // close connection
             socket.close();
+            dout.flush();
+            dout.close();
             in.close();
         }
         catch(IOException i)
@@ -54,8 +68,23 @@ public class Server {
         }
     }
 
+    public int parseREquest(String req){
+        
+        int documentSize = 0;
+        return documentSize;
+    }
+
+    public String createDocument(int size){
+       
+        String documentHeader= "";
+        String document = "";
+        document = "<HTML>\n<HEAD>\n<TITLE>" + documentHeader +"</TITLE>\n</HEAD>\n<BODY>" + document + "</BODY>\n</HTML>";
+        return document;
+    }
+
     public static void main(String[] args) {
         System.out.println("\nNice try feds\nI'm not paying my taxes!");
+        System.out.println("Length of basic template:"  + "<HTML>\n<HEAD>\n<TITLE></TITLE>\n</HEAD>\n<BODY></BODY>\n</HTML>".length()); //59 btw
         Server benimServerim = new Server(6666);
     }
 }
