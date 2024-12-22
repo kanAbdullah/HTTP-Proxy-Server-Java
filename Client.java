@@ -1,4 +1,6 @@
 import java.net.*;
+import java.io.FileWriter;
+import java.io.IOException;
 
 import javax.xml.crypto.Data;
 
@@ -18,14 +20,15 @@ public class Client{
             String request = "GET /" + documentSize + " HTTP/1.0";
 
             String reqMessage = "";
-            
+
             dout.writeUTF(request);
             while (!reqMessage.equals("Over"))
             {
                 try
                 {
                     reqMessage = din.readUTF();
-                    System.out.println(reqMessage); 
+                    System.out.println(reqMessage);
+                    saveFile(reqMessage);
                 }
                 catch(IOException i)
                 {
@@ -41,5 +44,19 @@ public class Client{
             s.close();
 
         }catch(Exception e){System.out.println(e);}
+    }
+
+    public static void saveFile(String receivedMessage){
+        try {
+            FileWriter messageWriter = new FileWriter("receivedMessage.txt");
+            
+            messageWriter.write(receivedMessage);
+            messageWriter.close();
+            
+            System.out.println("Successfully wrote to the file.");
+          } catch (IOException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+          }
     }
 }

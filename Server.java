@@ -1,5 +1,8 @@
 import java.net.*;
 import java.io.*;
+import java.io.FileReader;
+import java.io.IOException;
+
 
 public class Server {
 
@@ -27,7 +30,6 @@ public class Server {
                 new BufferedInputStream(socket.getInputStream()));
 
             dout  = new DataOutputStream(socket.getOutputStream());
-            
  
             String line = "";
  
@@ -38,6 +40,8 @@ public class Server {
                 {
                     line = in.readUTF();
                     int size = parseREquest(line);
+                    System.out.println("Request: " + line);
+                    System.out.println("Document size: " + size);
                     System.out.println(line);
 
                     String document = createDocument(size);
@@ -68,9 +72,10 @@ public class Server {
         }
     }
 
-    public int parseREquest(String req){
+    public int parseREquest(String req){ //needs to be error-proof
         
         int documentSize = 0;
+        documentSize = Integer.parseInt(req.substring(5,req.length()-9));
         return documentSize;
     }
 
@@ -78,6 +83,23 @@ public class Server {
        
         String documentHeader= "";
         String document = "";
+        String responsePath = "./House-M.D.-pilot-script.txt";
+        
+        try (FileReader reader = new FileReader(responsePath)) {
+            char[] buffer = new char[size];
+            int charsRead = reader.read(buffer, 0, size);
+
+            if (charsRead > 0) {
+                document = new String(buffer, 0, charsRead);
+                System.out.println("Read text:");
+                System.out.println(document);
+            } else {
+                System.out.println("No characters read from the file.");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        
         document = "<HTML>\n<HEAD>\n<TITLE>" + documentHeader +"</TITLE>\n</HEAD>\n<BODY>" + document + "</BODY>\n</HTML>";
         return document;
     }
@@ -85,6 +107,6 @@ public class Server {
     public static void main(String[] args) {
         System.out.println("\nNice try feds\nI'm not paying my taxes!");
         System.out.println("Length of basic template:"  + "<HTML>\n<HEAD>\n<TITLE></TITLE>\n</HEAD>\n<BODY></BODY>\n</HTML>".length()); //59 btw
-        Server benimServerim = new Server(6666);
+        Server currentServer = new Server(6666);
     }
 }
