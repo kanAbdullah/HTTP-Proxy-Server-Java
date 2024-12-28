@@ -1,112 +1,144 @@
-import java.net.*;
+
 import java.io.*;
-import java.io.FileReader;
-import java.io.IOException;
+import java.net.*;
 
+class Server {
 
-public class Server {
+    public static void main(String[] args) {
+        ServerSocket server = null;
 
-    private Socket          socket   = null;
-    private ServerSocket    server   = null;
-    private DataInputStream in       =  null;
-    DataOutputStream        dout     = null;
- 
-    // constructor with port
-    public Server(int port)
-    {
-        // starts server and waits for a connection
-        try
-        {
-            server = new ServerSocket(port);
-            System.out.println("Server started");
- 
-            System.out.println("Waiting for a client ...");
- 
-            socket = server.accept();
-            System.out.println("Client accepted");
- 
-            // takes input from the client socket
-            in = new DataInputStream(
-                new BufferedInputStream(socket.getInputStream()));
+        try {
+            // Scanner sc = new Scanner(System.in);
+            // System.out.println("Enter the port number: ");
+            // int portNumber = sc.nextInt();
+            // sc.close();
 
-            dout  = new DataOutputStream(socket.getOutputStream());
- 
-            String line = "";
- 
-            // reads message from client until "Over" is sent
-            while (!line.equals("Over"))
-            {
-                try
-                {
-                    line = in.readUTF();
-                    int size = parseREquest(line);
-                    System.out.println("Request: " + line);
-                    System.out.println("Document size: " + size);
-                    System.out.println(line);
+            server = new ServerSocket(8080);
+            server.setReuseAddress(true);
 
-                    String document = createDocument(size);
+            while (true) {
+                Socket client = server.accept();
+                System.out.println("New client connected: " + client.getInetAddress().getHostAddress());
 
-                    /*
-                     * send the parsed and created document to the client
-                     */
-
-                    dout.writeUTF(document);
-                }
-                catch(IOException i)
-                {
-                    System.out.println(i);
-                    break;
-                }
-            }
-            System.out.println("Closing connection");
- 
-            // close connection
-            socket.close();
-            dout.flush();
-            dout.close();
-            in.close();
-        }
-        catch(IOException i)
-        {
-            System.out.println(i);
-        }
-    }
-
-    public int parseREquest(String req){ //needs to be error-proof
-        
-        int documentSize = 0;
-        documentSize = Integer.parseInt(req.substring(5,req.length()-9));
-        return documentSize;
-    }
-
-    public String createDocument(int size){
-       
-        String documentHeader= "";
-        String document = "";
-        String responsePath = "./House-M.D.-pilot-script.txt";
-        
-        try (FileReader reader = new FileReader(responsePath)) {
-            char[] buffer = new char[size];
-            int charsRead = reader.read(buffer, 0, size);
-
-            if (charsRead > 0) {
-                document = new String(buffer, 0, charsRead);
-                System.out.println("Read text:");
-                System.out.println(document);
-            } else {
-                System.out.println("No characters read from the file.");
+                ClientHandler clientSock = new ClientHandler(client);
+                new Thread(clientSock).start();
             }
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            if (server != null) {
+                try {
+                    server.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
-        
-        document = "<HTML>\n<HEAD>\n<TITLE>" + documentHeader +"</TITLE>\n</HEAD>\n<BODY>" + document + "</BODY>\n</HTML>";
-        return document;
     }
 
-    public static void main(String[] args) {
-        System.out.println("\nNice try feds\nI'm not paying my taxes!");
-        System.out.println("Length of basic template:"  + "<HTML>\n<HEAD>\n<TITLE></TITLE>\n</HEAD>\n<BODY></BODY>\n</HTML>".length()); //59 btw
-        Server currentServer = new Server(6666);
+    private static class ClientHandler implements Runnable {
+
+        private final Socket clientSocket;
+
+        public ClientHandler(Socket socket) {
+            this.clientSocket = socket;
+        }
+
+        @Override
+        public void run() {
+            OutputStream out;
+            try  {
+                out = clientSocket.getOutputStream(); 
+                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                String request;
+                while ((request = in.readLine()) != null) {
+                    System.out.printf("Received from client: %s\n", request);
+
+                    // parse the request
+                    int documentSize = parseRequest(request);
+                    errorHandler(documentSize);
+                    String document = createDocument(documentSize);
+
+                    // Send the document using byte stream instead of PrintWriter
+                    byte[] documentBytes = document.getBytes();
+                    out.write(documentBytes);
+                    out.flush();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (IllegalArgumentException e) {
+                // 400 Bad Request
+                try {
+                    System.out.println("Bad Request");
+                    out = clientSocket.getOutputStream();
+                    System.out.println("outputstream created");
+                    String badRequest = "HTTP/1.1 400 Bad Request\n\n";
+                    System.out.println("bad request created");
+                    out.write(badRequest.getBytes());
+                    out.flush();
+                    System.out.println("Bad Request sent to client");
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+
+            } finally {
+                try {
+                    System.out.println("Closing the connection");
+                    clientSocket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        public int parseRequest(String req) {
+            try {
+                // Daha güvenli parsing
+                String[] parts = req.split(" ");
+                if (parts.length >= 2) {
+                    String sizePart = parts[1].substring(1); // Remove leading '/'
+                    int size = Integer.parseInt(sizePart);
+                    return size;
+                }
+                return 100; // Default size if parsing fails
+            } catch (Exception e) {
+                System.out.println("Error parsing request: " + req);
+                return 100; // Default size
+            }
+        }
+
+        public String createDocument(int size) {
+            StringBuilder document = new StringBuilder();
+            String documentHeader = "Response Document";
+            String responsePath = "./House-M.D.-pilot-script.txt";
+
+            try (BufferedReader reader = new BufferedReader(new FileReader(responsePath))) {
+                char[] buffer = new char[size - 78];
+                int charsRead = reader.read(buffer, 0, size - 78);
+
+                if (charsRead > 0) {
+                    document.append(new String(buffer, 0, charsRead));
+                    System.out.println("Read text length: " + charsRead);
+                } else {
+                    document.append("No content available");
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                document.append("Error reading file");
+            }
+
+            // HTML formatında dökümanı oluştur
+            return "<HTML>\n<HEAD>\n<TITLE>" + documentHeader
+                    + "</TITLE>\n</HEAD>\n<BODY>\n" + document.toString()
+                    + "\n</BODY>\n</HTML>";
+        }
+
+        public void errorHandler(int size) {
+            // 400 Bad Request
+            if (size < 100 || size > 20000) {
+                //return bad request 401
+                throw new IllegalArgumentException("Bad Request");
+            }
+        }
     }
 }
