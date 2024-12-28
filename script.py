@@ -136,7 +136,7 @@ class ProxyServer:
         client_socket.sendall(response.encode())
 
     def start(self):
-        print(f"[PROXY] Starting proxy server on {self.host}:{self.port}")
+        print(f"[PROXY] Starting proxy server on http://{self.host}:{self.port}")
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.bind((self.host, self.port))
         server.listen(5)
