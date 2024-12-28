@@ -1,6 +1,7 @@
 
 import java.io.*;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 
 class Server {
 
@@ -8,14 +9,9 @@ class Server {
         ServerSocket server = null;
 
         try {
-            // Scanner sc = new Scanner(System.in);
-            // System.out.println("Enter the port number: ");
-            // int portNumber = sc.nextInt();
-            // sc.close();
-
             server = new ServerSocket(8080);
             server.setReuseAddress(true);
-
+            System.err.println("Server started on port 8080");
             while (true) {
                 Socket client = server.accept();
                 System.out.println("New client connected: " + client.getInetAddress().getHostAddress());
@@ -26,12 +22,12 @@ class Server {
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            if (server != null) {
-                try {
+            try {
+                if (server != null) {
                     server.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
                 }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -48,41 +44,51 @@ class Server {
         public void run() {
             try (
                     OutputStream out = clientSocket.getOutputStream(); BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
-                String request;
-                while ((request = in.readLine()) != null) {
-                    System.out.printf("Received from client: %s\n", request);
 
-                    try {
-                        // parse the request
-                        int documentSize = parseRequest(request);
-                        String document = createDocument(documentSize);
-                        out.write(document.getBytes());
-                        out.flush();
-                    } catch (BadRequestException e) {
-                        // Bad request durumunda hata mesajı gönder
-                        sendResponse(out, "400 Bad Request");
-                    } catch (NotImplementedException e) {
-                        // Diğer hatalar için 501 Not Implemented
+                String requestLine = in.readLine(); // İlk satırı oku
+                System.out.printf("Received from client: %s\n", requestLine); // Gelen isteği yazdır
 
-                        sendResponse(out, "501 Not Implemented");
-                    } catch (Exception e) {
-                        // Diğer hatalar için 500 Internal Server Error
-                        sendResponse(out, "500 Internal Server Error");
-                    }
+                // // Başlıkları atla (boş bir satıra kadar oku)
+                // String headerLine;
+                // while ((headerLine = in.readLine()) != null && !headerLine.isEmpty()) {
+                //     System.out.printf("Header: %s\n", headerLine);
+                // }
+                try {
+                    // İstek işleme
+                    int documentSize = parseRequest(requestLine);
+                    String document = createDocument(documentSize);
+                    sendResponse(out, "200 OK", document);
+                    System.out.println("Sent to client:\n" + document); // Gönderilen yanıtı yazdır
+                } catch (BadRequestException e) {
+                    sendResponse(out, "400 Bad Request", "400 Invalid Request");
+                    System.out.println("Sent to client: 400 Bad Request");
+                } catch (NotImplementedException e) {
+                    sendResponse(out, "501 Not Implemented", "501 Method Not Allowed");
+                    System.out.println("Sent to client: 501 Not Implemented");
+                } catch (Exception e) {
+                    sendResponse(out, "500 Internal Server Error", "500 Internal Server Error");
+                    System.out.println("Sent to client: 500 Internal Server Error");
                 }
+
             } catch (IOException e) {
                 e.printStackTrace();
+            } finally {
+                try {
+                    if (clientSocket != null && !clientSocket.isClosed()) {
+                        clientSocket.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
 
-        // Özel hata sınıfı
         private static class BadRequestException extends Exception {
 
             public BadRequestException(String message) {
                 super(message);
             }
         }
-        // Özel hata sınıfı
 
         private static class NotImplementedException extends Exception {
 
@@ -91,9 +97,13 @@ class Server {
             }
         }
 
-        private void sendResponse(OutputStream out, String status) throws IOException {
-            String response = String.format("HTTP/1.1 %s\r\n", status
-            );
+        private void sendResponse(OutputStream out, String status, String body) throws IOException {
+            String response = String.format(
+                    "HTTP/1.1 %s\r\n"
+                    + "Content-Type: text/html\r\n"
+                    + "Content-Length: %d\r\n"
+                    + "\r\n%s",
+                    status, body.getBytes(StandardCharsets.UTF_8).length, body);
 
             out.write(response.getBytes());
             out.flush();
@@ -116,7 +126,7 @@ class Server {
                 int size = Integer.parseInt(sizePart);
 
                 // Size sınırlamaları
-                if (size <= 100 || size > 20000) {
+                if (size < 100 || size > 20000) {
                     throw new BadRequestException("Document size is not valid");
                 }
 
@@ -139,7 +149,6 @@ class Server {
 
                 if (charsRead > 0) {
                     document.append(new String(buffer, 0, charsRead));
-                    System.out.println("Read text length: " + charsRead);
                 } else {
                     document.append("No content available");
                 }
@@ -148,7 +157,6 @@ class Server {
                 document.append("Error reading file");
             }
 
-            // HTML formatında dökümanı oluştur
             return "<HTML>\n<HEAD>\n<TITLE>" + documentHeader
                     + "</TITLE>\n</HEAD>\n<BODY>\n" + document.toString()
                     + "\n</BODY>\n</HTML>";

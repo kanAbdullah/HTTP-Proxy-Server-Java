@@ -6,74 +6,53 @@ import java.util.*;
 public class Client {
 
     public static void main(String[] args) {
-        try (Socket socket = new Socket("localhost", 8080)) {
-            // writing to server 
-            PrintWriter out = new PrintWriter(
-                    socket.getOutputStream(), true);
+        try (Socket socket = new Socket("localhost", 8080); PrintWriter out = new PrintWriter(socket.getOutputStream(), true); BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream())); Scanner sc = new Scanner(System.in)) {
 
-            // reading from server 
-            InputStream inputStream = socket.getInputStream();
-            BufferedReader in = new BufferedReader(
-                    new InputStreamReader(inputStream));
-
-            Scanner sc = new Scanner(System.in);
             String line = null;
 
             while (!"exit".equalsIgnoreCase(line)) {
-                // reading from user 
-                line = sc.nextLine();
+                line = sc.nextLine(); // Kullanıcıdan veri al
+                out.println(line); // Veriyi sunucuya gönder
 
-                // sending the user input to server 
-                out.println(line);
-                out.flush();
-
-                // Reading the entire response from server
                 StringBuilder response = new StringBuilder();
                 char[] buffer = new char[1024];
                 int bytesRead;
-
-                // Keep reading until we've got all the data
+                String http200 = "HTTP/1.1 200 OK";
+                String http400 = "HTTP/1.1 400 Bad Request";
+                String http501 = "HTTP/1.1 501 Not Implemented";
+                String http500 = "HTTP/1.1 500 Internal Server Error";
+                String receivedMessage = "Received from server: ";
+                
                 while ((bytesRead = in.read(buffer)) != -1) {
                     response.append(buffer, 0, bytesRead);
-
-                    // Check if we've received the complete HTML document
-                    if (response.toString().contains("</HTML>")) {
+                    if (response.toString().toLowerCase().contains("</html>")
+                            || // Büyük/küçük harf duyarsız kontrol
+                            response.toString().contains(http400)
+                            || response.toString().contains(http501)
+                            || response.toString().contains(http500)) {
                         break;
-                    } else if (response.toString().contains("HTTP/1.1 400 Bad Request")) {
-                        break;
-                    } else if (response.toString().contains("HTTP/1.1 501 Not Implemented")) {
-                        break;
-                    } else if (response.toString().contains("HTTP/1.1 500 Internal Server Error")) {
-                        break;
-
                     }
                 }
 
                 String completeMessage = response.toString();
-                String http400 = "HTTP/1.1 400 Bad Request";
-                String http501 = "HTTP/1.1 501 Not Implemented";
-                String http500 = "HTTP/1.1 500 Internal Server Error";
                 if (completeMessage.contains(http400)) {
-                    System.out.println(http400);
+                    System.out.println(receivedMessage + http400);
                 } else if (completeMessage.contains(http501)) {
-                    System.out.println(http501);
+                    System.out.println(receivedMessage + http501);
                 } else if (completeMessage.contains(http500)) {
-                    System.out.println(http500);
+                    System.out.println(receivedMessage + http500);
                 } else {
-                    System.out.println("HTTP/1.1 200 OK");
-                    // Save the complete message
+                    System.out.println(receivedMessage + http200);
                     saveFile(completeMessage);
                 }
             }
-
-            sc.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     public static void saveFile(String receivedMessage) {
-        try (FileWriter messageWriter = new FileWriter("receivedMessage.html")) {  // .html uzantısı kullanıyoruz çünkü HTML içerik
+        try (FileWriter messageWriter = new FileWriter("receivedMessage.html")) {
             messageWriter.write(receivedMessage);
             System.out.println("Successfully wrote to the file.");
         } catch (IOException e) {
