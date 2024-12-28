@@ -46,64 +46,85 @@ class Server {
 
         @Override
         public void run() {
-            OutputStream out;
-            try  {
-                out = clientSocket.getOutputStream(); 
-                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            try (
+                    OutputStream out = clientSocket.getOutputStream(); BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
                 String request;
                 while ((request = in.readLine()) != null) {
                     System.out.printf("Received from client: %s\n", request);
 
-                    // parse the request
-                    int documentSize = parseRequest(request);
-                    errorHandler(documentSize);
-                    String document = createDocument(documentSize);
+                    try {
+                        // parse the request
+                        int documentSize = parseRequest(request);
+                        String document = createDocument(documentSize);
+                        out.write(document.getBytes());
+                        out.flush();
+                    } catch (BadRequestException e) {
+                        // Bad request durumunda hata mesajı gönder
+                        sendResponse(out, "400 Bad Request");
+                    } catch (NotImplementedException e) {
+                        // Diğer hatalar için 501 Not Implemented
 
-                    // Send the document using byte stream instead of PrintWriter
-                    byte[] documentBytes = document.getBytes();
-                    out.write(documentBytes);
-                    out.flush();
+                        sendResponse(out, "501 Not Implemented");
+                    } catch (Exception e) {
+                        // Diğer hatalar için 500 Internal Server Error
+                        sendResponse(out, "500 Internal Server Error");
+                    }
                 }
             } catch (IOException e) {
                 e.printStackTrace();
-            } catch (IllegalArgumentException e) {
-                // 400 Bad Request
-                try {
-                    System.out.println("Bad Request");
-                    out = clientSocket.getOutputStream();
-                    System.out.println("outputstream created");
-                    String badRequest = "HTTP/1.1 400 Bad Request\n\n";
-                    System.out.println("bad request created");
-                    out.write(badRequest.getBytes());
-                    out.flush();
-                    System.out.println("Bad Request sent to client");
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-
-            } finally {
-                try {
-                    System.out.println("Closing the connection");
-                    clientSocket.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
             }
         }
 
-        public int parseRequest(String req) {
+        // Özel hata sınıfı
+        private static class BadRequestException extends Exception {
+
+            public BadRequestException(String message) {
+                super(message);
+            }
+        }
+        // Özel hata sınıfı
+
+        private static class NotImplementedException extends Exception {
+
+            public NotImplementedException(String message) {
+                super(message);
+            }
+        }
+
+        private void sendResponse(OutputStream out, String status) throws IOException {
+            String response = String.format("HTTP/1.1 %s\r\n", status
+            );
+
+            out.write(response.getBytes());
+            out.flush();
+        }
+
+        public int parseRequest(String req) throws BadRequestException, NotImplementedException {
             try {
-                // Daha güvenli parsing
                 String[] parts = req.split(" ");
-                if (parts.length >= 2) {
-                    String sizePart = parts[1].substring(1); // Remove leading '/'
-                    int size = Integer.parseInt(sizePart);
-                    return size;
+                // HTTP format kontrolü
+                if (parts.length != 3 || !parts[0].equals("GET") || !parts[2].startsWith("HTTP/")) {
+
+                    if (parts[0].equals("POST") || parts[0].equals("PUT") || parts[0].equals("DELETE")) {
+                        throw new NotImplementedException("Method not allowed");
+                    }
+                    throw new BadRequestException("Invalid HTTP request format");
                 }
-                return 100; // Default size if parsing fails
-            } catch (Exception e) {
-                System.out.println("Error parsing request: " + req);
-                return 100; // Default size
+
+                // Path kontrolü
+                String sizePart = parts[1].substring(1); // Remove leading '/'
+                int size = Integer.parseInt(sizePart);
+
+                // Size sınırlamaları
+                if (size <= 100 || size > 20000) {
+                    throw new BadRequestException("Document size is not valid");
+                }
+
+                return size;
+            } catch (NumberFormatException e) {
+                throw new BadRequestException("Invalid document size format");
+            } catch (IndexOutOfBoundsException e) {
+                throw new BadRequestException("Invalid request format");
             }
         }
 
@@ -133,12 +154,5 @@ class Server {
                     + "\n</BODY>\n</HTML>";
         }
 
-        public void errorHandler(int size) {
-            // 400 Bad Request
-            if (size < 100 || size > 20000) {
-                //return bad request 401
-                throw new IllegalArgumentException("Bad Request");
-            }
-        }
     }
 }
