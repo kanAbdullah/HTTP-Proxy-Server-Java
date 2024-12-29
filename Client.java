@@ -73,7 +73,7 @@ public class Client {
         fullRequest.append("Host: ").append(WEB_SERVER_HOST).append(":").append(WEB_SERVER_PORT).append("\r\n");
         fullRequest.append("User-Agent: JavaClient\r\n");
         fullRequest.append("Accept: */*\r\n");
-        fullRequest.append("Connection: close\r\n");
+        fullRequest.append("Connection: keep-alive\r\n");
         fullRequest.append("\r\n"); // Empty line to indicate end of headers
 
         return fullRequest.toString();
@@ -83,43 +83,52 @@ public class Client {
         StringBuilder response = new StringBuilder();
         String line;
         int contentLength = -1;
-        boolean isChunked = false;
-
+        
         // Read headers
+        System.out.println("Reading headers...");
         while ((line = in.readLine()) != null && !line.isEmpty()) {
             response.append(line).append("\r\n");
             if (line.toLowerCase().startsWith("content-length:")) {
                 contentLength = Integer.parseInt(line.substring(15).trim());
-            }
-            if (line.toLowerCase().startsWith("transfer-encoding: chunked")) {
-                isChunked = true;
+                System.out.println("Found Content-Length: " + contentLength);
             }
         }
         response.append("\r\n");
-
-        // Read body based on Content-Length or until </html> is found
+    
+        // Read body based on Content-Length
         if (contentLength > 0) {
-            char[] buffer = new char[contentLength];
+            System.out.println("Reading body with length: " + contentLength);
+            StringBuilder body = new StringBuilder();
+            char[] buffer = new char[4096]; // Daha büyük buffer kullanıyoruz
             int totalRead = 0;
-            while (totalRead < contentLength) {
-                int read = in.read(buffer, totalRead, contentLength - totalRead);
-                if (read == -1) {
-                    break;
+            
+            try {
+                while (totalRead < contentLength) {
+                    int read = in.read(buffer, 0, Math.min(buffer.length, contentLength - totalRead));
+                    if (read == -1) {
+                        System.out.println("End of stream reached after reading " + totalRead + " bytes");
+                        break;
+                    }
+                    body.append(buffer, 0, read);
+                    totalRead += read;
+                    System.out.println("Progress: " + totalRead + "/" + contentLength + " bytes read");
+                    
+                    // Eğer okuma bir süre takılırsa timeout uygula
+                    if (totalRead < contentLength && !in.ready()) {
+                        System.out.println("No more data available, breaking read loop");
+                        break;
+                    }
                 }
-                totalRead += read;
+            } catch (IOException e) {
+                System.out.println("Error during read: " + e.getMessage());
             }
-            response.append(buffer);
-        } else {
-            // Fallback to reading until </html> or empty line
-            String body;
-            while ((body = in.readLine()) != null) {
-                response.append(body).append("\r\n");
-                if (body.toLowerCase().contains("</html>")) {
-                    break;
-                }
-            }
+            
+            response.append(body);
+            
+            // Eksik ya da fazla okuma durumunda bile devam et
+            System.out.println("Final bytes read: " + totalRead + " of expected " + contentLength);
         }
-
+    
         return response.toString();
     }
 

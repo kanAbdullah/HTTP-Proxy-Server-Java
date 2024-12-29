@@ -1,0 +1,336 @@
+
+import java.io.*;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
+
+class Server {
+
+    public static void main(String[] args) {
+        ServerSocket server = null;
+
+        try {
+            server = new ServerSocket(8080);
+            server.setReuseAddress(true);
+            System.err.println("Server started on port 8080");
+            while (true) {
+                Socket client = server.accept();
+                System.out.println("New client connected: " + client.getInetAddress().getHostAddress());
+
+                ClientHandler clientSock = new ClientHandler(client);
+                new Thread(clientSock).start();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (server != null) {
+                    server.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static class ClientHandler implements Runnable {
+
+        private final Socket clientSocket;
+
+        public ClientHandler(Socket socket) {
+            this.clientSocket = socket;
+        }
+
+        @Override
+        public void run() {
+            try (
+                    OutputStream out = clientSocket.getOutputStream(); BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
+
+                String requestLine = in.readLine(); // İlk satırı oku
+                System.out.printf("Received from client: %s\n", requestLine); // Gelen isteği yazdır
+
+                // // Başlıkları atla (boş bir satıra kadar oku)
+                // String headerLine;
+                // while ((headerLine = in.readLine()) != null && !headerLine.isEmpty()) {
+                //     System.out.printf("Header: %s\n", headerLine);
+                // }
+                try {
+                    // İstek işleme
+                    int documentSize = parseRequest(requestLine);
+                    String document = createDocument(documentSize);
+                    sendResponse(out, "200 OK", document);
+                    System.out.println("Sent to client:\n" + document); // Gönderilen yanıtı yazdır
+                } catch (BadRequestException e) {
+                    sendResponse(out, "400 Bad Request", "400 Invalid Request");
+                    System.out.println("Sent to client: 400 Bad Request");
+                } catch (NotImplementedException e) {
+                    sendResponse(out, "501 Not Implemented", "501 Method Not Allowed");
+                    System.out.println("Sent to client: 501 Not Implemented");
+                } catch (Exception e) {
+                    sendResponse(out, "500 Internal Server Error", "500 Internal Server Error");
+                    System.out.println("Sent to client: 500 Internal Server Error");
+                }
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    if (clientSocket != null && !clientSocket.isClosed()) {
+                        clientSocket.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        private static class BadRequestException extends Exception {
+
+            public BadRequestException(String message) {
+                super(message);
+            }
+        }
+
+        private static class NotImplementedException extends Exception {
+
+            public NotImplementedException(String message) {
+                super(message);
+            }
+        }
+
+        private void sendResponse(OutputStream out, String status, String body) throws IOException {
+            String response = String.format(
+                    "HTTP/1.1 %s\r\n"
+                    + "Content-Type: text/html\r\n"
+                    + "Content-Length: %d\r\n"
+                    + "\r\n%s",
+                    status, body.getBytes(StandardCharsets.UTF_8).length, body);
+
+            out.write(response.getBytes());
+            out.flush();
+        }
+
+        public int parseRequest(String req) throws BadRequestException, NotImplementedException {
+            try {
+                String[] parts = req.split(" ");
+                // HTTP format kontrolü
+                if (parts.length != 3 || !parts[0].equals("GET") || !parts[2].startsWith("HTTP/")) {
+
+                    if (parts[0].equals("POST") || parts[0].equals("PUT") || parts[0].equals("DELETE")) {
+                        throw new NotImplementedException("Method not allowed");
+                    }
+                    throw new BadRequestException("Invalid HTTP request format");
+                }
+
+                // Path kontrolü
+                String sizePart = parts[1].substring(1); // Remove leading '/'
+                int size = Integer.parseInt(sizePart);
+
+                // Size sınırlamaları
+                if (size < 100 || size > 20000) {
+                    throw new BadRequestException("Document size is not valid");
+                }
+
+                return size;
+            } catch (NumberFormatException e) {
+                throw new BadRequestException("Invalid document size format");
+            } catch (IndexOutOfBoundsException e) {
+                throw new BadRequestException("Invalid request format");
+            }
+        }
+
+        public String createDocument(int size) {
+            StringBuilder document = new StringBuilder();
+            String documentHeader = "Response Document";
+            String responsePath = "./House-M.D.-pilot-script.txt";
+
+            try (BufferedReader reader = new BufferedReader(new FileReader(responsePath))) {
+                char[] buffer = new char[size - 78];
+                int charsRead = reader.read(buffer, 0, size - 78);
+
+                if (charsRead > 0) {
+                    document.append(new String(buffer, 0, charsRead));
+                } else {
+                    document.append("No content available");
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                document.append("Error reading file");
+            }
+
+            return "<HTML>\n<HEAD>\n<TITLE>" + documentHeader
+                    + "</TITLE>\n</HEAD>\n<BODY>\n" + document.toString()
+                    + "\n</BODY>\n</HTML>";
+        }
+
+    }
+}
+import java.io.*;
+import java.net.*;
+
+public class ProxyServer {
+    private static final int PORT = 8888;
+    private static final int MAX_URI_LENGTH = 9999;
+
+    public static void main(String[] args) {
+        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+            System.out.println("Proxy Server is running on port " + PORT);
+
+            while (true) {
+                Socket clientSocket = serverSocket.accept();
+                System.out.println("New client connected: " + clientSocket.getInetAddress().getHostAddress());
+                new Thread(new ProxyHandler(clientSocket)).start();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    static class ProxyHandler implements Runnable {
+        private final Socket clientSocket;
+
+        public ProxyHandler(Socket clientSocket) {
+            this.clientSocket = clientSocket;
+        }
+
+        @Override
+        public void run() {
+            try (
+                InputStream clientIn = clientSocket.getInputStream();
+                OutputStream clientOut = clientSocket.getOutputStream();
+                BufferedReader clientReader = new BufferedReader(new InputStreamReader(clientIn))
+            ) {
+                String requestLine = clientReader.readLine();
+
+                if (requestLine == null || requestLine.isEmpty()) {
+                    sendErrorResponse(clientOut, "400 Bad Request", "Invalid request format");
+                    return;
+                }
+
+                if (requestLine.startsWith("GET")) {
+                    handleGetRequest(requestLine, clientReader, clientOut);
+                } else {
+                    sendErrorResponse(clientOut, "501 Not Implemented", "Method Not Allowed");
+                }
+            } catch (SocketException e) {
+                System.err.println("Client disconnected: " + e.getMessage());
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    clientSocket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        private void handleGetRequest(String requestLine, BufferedReader clientReader, OutputStream clientOut) throws IOException {
+            String uri = extractUriFromRequestLine(requestLine);
+
+            if (uri.length() > MAX_URI_LENGTH) {
+                sendErrorResponse(clientOut, "414 Request-URI Too Long", "URI length exceeds the limit of " + MAX_URI_LENGTH);
+                return;
+            }
+
+            forwardRequestToServer(requestLine, clientReader, clientOut, uri);
+        }
+
+        private String extractUriFromRequestLine(String requestLine) {
+            String[] parts = requestLine.split(" ");
+            if (parts.length < 2) {
+                return "";
+            }
+
+            String absoluteUri = parts[1];
+            if (absoluteUri.startsWith("http://")) {
+                int startIndex = absoluteUri.indexOf('/', 7); // Skip "http://"
+                return startIndex != -1 ? absoluteUri.substring(startIndex) : "/";
+            }
+
+            return absoluteUri; // Default to relative URI
+        }
+
+        private void forwardRequestToServer(String requestLine, BufferedReader clientReader, OutputStream clientOut, String uri) throws IOException {
+            try (Socket serverSocket = new Socket("localhost", 8080);
+                 OutputStream serverOut = serverSocket.getOutputStream();
+                 InputStream serverIn = serverSocket.getInputStream()) {
+
+                // Rewrite the request line to use the relative URI
+                String rewrittenRequestLine = requestLine.replaceFirst("http://[^/]+", "");
+                serverOut.write((rewrittenRequestLine + "\r\n").getBytes());
+                
+                // Forward additional headers
+                String headerLine;
+                while ((headerLine = clientReader.readLine()) != null && !headerLine.isEmpty()) {
+                    serverOut.write((headerLine + "\r\n").getBytes());
+                }
+                serverOut.write("\r\n".getBytes());
+                serverOut.flush();
+
+                // Relay response from web server to client
+                byte[] buffer = new byte[1024];
+                int bytesRead;
+                while ((bytesRead = serverIn.read(buffer)) != -1) {
+                    clientOut.write(buffer, 0, bytesRead);
+                }
+                clientOut.flush();
+            } catch (ConnectException e) {
+                sendErrorResponse(clientOut, "404 Not Found", "Web Server Not Found");
+            }
+        }
+
+        private void sendErrorResponse(OutputStream out, String status, String body) throws IOException {
+            String response = String.format(
+                "HTTP/1.1 %s\r\nContent-Type: text/html\r\nContent-Length: %d\r\n\r\n%s",
+                status, body.getBytes().length, body
+            );
+            out.write(response.getBytes());
+            out.flush();
+        }
+    }
+}
+
+import java.io.*;
+import java.net.*;
+import java.util.Scanner;
+
+public class Client {
+
+    public static void main(String[] args) {
+        try (Socket socket = new Socket("localhost", 8888); PrintWriter out = new PrintWriter(socket.getOutputStream(), true); BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream())); Scanner sc = new Scanner(System.in)) {
+
+            String line = null;
+            while (!"exit".equalsIgnoreCase(line)) {
+                System.out.print("Enter request (e.g., GET /100 HTTP/1.1): ");
+                line = sc.nextLine();
+                out.println(line);
+
+                StringBuilder response = new StringBuilder();
+                char[] buffer = new char[1024];
+                int bytesRead;
+                while ((bytesRead = in.read(buffer)) != -1) {
+                    response.append(buffer, 0, bytesRead);
+                    if (response.toString().toLowerCase().contains("</html>")) {
+                        break;
+                    }
+                }
+
+                System.out.println("Response from server:\n" + response);
+                saveFile(response.toString());
+            
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void saveFile(String receivedMessage) {
+        try (FileWriter messageWriter = new FileWriter("receivedMessage.html")) {
+            messageWriter.write(receivedMessage);
+            System.out.println("Successfully wrote to the file.");
+        } catch (IOException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        }
+    }
+}

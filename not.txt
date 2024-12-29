@@ -1,0 +1,50 @@
+If the  requested URI asks for a size less than 100, or for a size greater than 20,000, 
+or if the URL is not an integer, your server should not return any document, 
+but instead it should return a "Bad Request" message with error code 400. 
+
+
+If the method in request message is not GET, the server 
+would return “Not Implemented” (501) for valid HTTP methods other than GET, or “Bad 
+Request” (400) for invalid methods. 
+
+GET /1500 HTTP/1.0
+
+
+
+
+
+
+
+New client connected: 0:0:0:0:0:0:0:1
+Received from client: GET /500 HTTP/1.1
+Sent to client:
+<HTML>
+<HEAD>
+<TITLE>Response Document</TITLE>
+</HEAD>
+<BODY>
+[House and Wilson are walking through the hallway. All you can see is their hands and legs, showing that House is using a cane and limping. Wilson is the only one of the two wearing a lab coat.]
+
+Wilson: 29 year old female, first seizure one month ago, lost the ability to speak. Babbled like a baby. Present deterioration of mental status.
+
+House: See that? They all assume Iâ??m a patient because of this cane.
+
+Wi
+</BODY>
+</HTML>
+Received from client: Host: localhost:8080
+Sent to client: 400 Bad Request
+Received from client: Connection: keep-alive
+
+New client connected: 0:0:0:0:0:0:0:1
+java.net.SocketException: Kurulan bir bağlantı, ana makinenizdeki yazılım tarafından iptal edildi
+
+New client connected: 0:0:0:0:0:0:0:1
+        at java.base/sun.nio.ch.NioSocketImpl.implWrite(NioSocketImpl.java:425)
+        at java.base/sun.nio.ch.NioSocketImpl.write(NioSocketImpl.java:445)
+        at java.base/sun.nio.ch.NioSocketImpl$2.write(NioSocketImpl.java:831)
+        at java.base/java.net.Socket$SocketOutputStream.write(Socket.java:1035)
+        at java.base/java.io.OutputStream.write(OutputStream.java:127)
+        at Server$ClientHandler.sendResponse(Server.java:101)
+        at Server$ClientHandler.run(Server.java:64)
+        at java.base/java.lang.Thread.run(Thread.java:840)

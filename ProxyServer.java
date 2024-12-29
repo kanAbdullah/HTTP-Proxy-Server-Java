@@ -1,7 +1,9 @@
+
 import java.io.*;
 import java.net.*;
 
 public class ProxyServer {
+
     private static final int PORT = 8888;
     private static final int MAX_URI_LENGTH = 9999;
 
@@ -20,6 +22,7 @@ public class ProxyServer {
     }
 
     static class ProxyHandler implements Runnable {
+
         private final Socket clientSocket;
 
         public ProxyHandler(Socket clientSocket) {
@@ -29,21 +32,24 @@ public class ProxyServer {
         @Override
         public void run() {
             try (
-                InputStream clientIn = clientSocket.getInputStream();
-                OutputStream clientOut = clientSocket.getOutputStream();
-                BufferedReader clientReader = new BufferedReader(new InputStreamReader(clientIn))
-            ) {
-                String requestLine = clientReader.readLine();
+                    InputStream clientIn = clientSocket.getInputStream(); OutputStream clientOut = clientSocket.getOutputStream(); BufferedReader clientReader = new BufferedReader(new InputStreamReader(clientIn))) {
+                // Burada while döngüsü ekleyerek birden fazla isteği işleyebiliriz
+                while (!clientSocket.isClosed()) {
+                    String requestLine = clientReader.readLine();
 
-                if (requestLine == null || requestLine.isEmpty()) {
-                    sendErrorResponse(clientOut, "400 Bad Request", "Invalid request format");
-                    return;
-                }
+                    if (requestLine == null) {
+                        break; // Client bağlantıyı kapattı
+                    }
 
-                if (requestLine.startsWith("GET")) {
-                    handleGetRequest(requestLine, clientReader, clientOut);
-                } else {
-                    sendErrorResponse(clientOut, "501 Not Implemented", "Method Not Allowed");
+                    if (requestLine.isEmpty()) {
+                        continue; // Boş satırı atla
+                    }
+
+                    if (requestLine.startsWith("GET")) {
+                        handleGetRequest(requestLine, clientReader, clientOut);
+                    } else {
+                        sendErrorResponse(clientOut, "501 Not Implemented", "Method Not Allowed");
+                    }
                 }
             } catch (SocketException e) {
                 System.err.println("Client disconnected: " + e.getMessage());
@@ -85,9 +91,7 @@ public class ProxyServer {
         }
 
         private void forwardRequestToServer(String requestLine, BufferedReader clientReader, OutputStream clientOut, String uri) throws IOException {
-            try (Socket serverSocket = new Socket("localhost", 8080);
-                 OutputStream serverOut = serverSocket.getOutputStream();
-                 InputStream serverIn = serverSocket.getInputStream()) {
+            try (Socket serverSocket = new Socket("localhost", 8080); OutputStream serverOut = serverSocket.getOutputStream(); InputStream serverIn = serverSocket.getInputStream()) {
 
                 // Rewrite the request line to use the relative URI
                 String rewrittenRequestLine = requestLine.replaceFirst("http://[^/]+", "");
@@ -117,8 +121,8 @@ public class ProxyServer {
 
         private void sendErrorResponse(OutputStream out, String status, String body) throws IOException {
             String response = String.format(
-                "HTTP/1.1 %s\r\nContent-Type: text/html\r\nContent-Length: %d\r\n\r\n%s",
-                status, body.getBytes().length, body
+                    "HTTP/1.1 %s\r\nContent-Type: text/html\r\nContent-Length: %d\r\n\r\n%s",
+                    status, body.getBytes().length, body
             );
             out.write(response.getBytes());
             out.flush();

@@ -97,18 +97,6 @@ class Server {
             }
         }
 
-        private void sendResponse(OutputStream out, String status, String body) throws IOException {
-            String response = String.format(
-                    "HTTP/1.1 %s\r\n"
-                    + "Content-Type: text/html\r\n"
-                    + "Content-Length: %d\r\n"
-                    + "\r\n%s",
-                    status, body.getBytes(StandardCharsets.UTF_8).length, body);
-
-            out.write(response.getBytes());
-            out.flush();
-        }
-
         public int parseRequest(String req) throws BadRequestException, NotImplementedException {
             try {
                 String[] parts = req.split(" ");
@@ -138,29 +126,55 @@ class Server {
             }
         }
 
-        public String createDocument(int size) {
+        public String createDocument(int requestedSize) {
             StringBuilder document = new StringBuilder();
             String documentHeader = "Response Document";
+            String htmlStart = "<HTML>\n<HEAD>\n<TITLE>" + documentHeader + "</TITLE>\n</HEAD>\n<BODY>\n";
+            String htmlEnd = "\n</BODY>\n</HTML>";
+            
+            String content = "";
             String responsePath = "./House-M.D.-pilot-script.txt";
-
+            
             try (BufferedReader reader = new BufferedReader(new FileReader(responsePath))) {
-                char[] buffer = new char[size - 78];
-                int charsRead = reader.read(buffer, 0, size - 78);
-
+                // İstenen boyut kadar oku
+                char[] buffer = new char[requestedSize];
+                int charsRead = reader.read(buffer);
                 if (charsRead > 0) {
-                    document.append(new String(buffer, 0, charsRead));
-                } else {
-                    document.append("No content available");
+                    content = new String(buffer, 0, charsRead);
                 }
             } catch (IOException e) {
-                e.printStackTrace();
-                document.append("Error reading file");
+                content = "Error reading file: " + e.getMessage();
             }
-
-            return "<HTML>\n<HEAD>\n<TITLE>" + documentHeader
-                    + "</TITLE>\n</HEAD>\n<BODY>\n" + document.toString()
-                    + "\n</BODY>\n</HTML>";
+            
+            // Tam HTML dökümanını oluştur
+            document.append(htmlStart)
+                   .append(content)
+                   .append(htmlEnd);
+                   
+            String finalDocument = document.toString();
+            
+            // Debug için boyut bilgisini yazdır
+            System.out.println("Created document with size: " + finalDocument.getBytes(StandardCharsets.UTF_8).length);
+            
+            return finalDocument;
         }
 
+        private void sendResponse(OutputStream out, String status, String body) throws IOException {
+            byte[] bodyBytes = body.getBytes(StandardCharsets.UTF_8);
+            int contentLength = bodyBytes.length;
+            
+            StringBuilder headerBuilder = new StringBuilder();
+            headerBuilder.append(String.format("HTTP/1.1 %s\r\n", status));
+            headerBuilder.append("Content-Type: text/html\r\n");
+            headerBuilder.append(String.format("Content-Length: %d\r\n", contentLength));
+            headerBuilder.append("\r\n");
+            
+            // Headers'ı ve body'yi ayrı ayrı yazalım
+            out.write(headerBuilder.toString().getBytes(StandardCharsets.UTF_8));
+            out.write(bodyBytes);
+            out.flush();
+            
+            System.out.println("Sent response with Content-Length: " + contentLength);
+        }
     }
 }
