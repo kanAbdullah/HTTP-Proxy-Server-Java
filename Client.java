@@ -1,24 +1,25 @@
-
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
 
 public class Client {
-
     private static final String PROXY_HOST = "localhost";
     private static final int PROXY_PORT = 8888;
     private static final String WEB_SERVER_HOST = "localhost";
     private static final int WEB_SERVER_PORT = 8080;
 
     public static void main(String[] args) {
-        try (Socket socket = new Socket(PROXY_HOST, PROXY_PORT); PrintWriter out = new PrintWriter(socket.getOutputStream(), true); BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream())); Scanner scanner = new Scanner(System.in)) {
+        try (Socket socket = new Socket(PROXY_HOST, PROXY_PORT);
+                PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                Scanner scanner = new Scanner(System.in)) {
 
             System.out.println("Connected to proxy server at " + PROXY_HOST + ":" + PROXY_PORT);
             System.out.println("Type 'exit' to quit");
 
             String userInput;
             while (true) {
-                System.out.print("Enter request (e.g., GET http://localhost:8080/500 HTTP/1.0): ");
+                System.out.print("Enter request: ");
                 userInput = scanner.nextLine();
 
                 if ("exit".equalsIgnoreCase(userInput)) {
@@ -35,7 +36,7 @@ public class Client {
                 if (response != null && response.body != null && !response.body.isEmpty()) {
 
                     System.out.println("\nResponse from server:");
-                    //print response
+                    // print response
 
                     if (response.isSuccess()) {
 
@@ -56,10 +57,8 @@ public class Client {
     }
 
     private static class ResponseData {
-
         String statusCode;
         int contentLength;
-        String contentType;
         String body;
 
         boolean isSuccess() {
@@ -100,25 +99,22 @@ public class Client {
             return null; // No response
         }
 
-        System.out.println("Response Line: " + responseLine); // Print the response line
+        System.out.println("Response Line: " + responseLine);
         String[] statusParts = responseLine.split(" ", 3);
         if (statusParts.length >= 2) {
-            response.statusCode = statusParts[1]; // Extract status code
+            response.statusCode = statusParts[1];
         }
 
-        // Read headers
         String line;
         while ((line = in.readLine()) != null && !line.isEmpty()) {
             if (line.toLowerCase().startsWith("content-length:")) {
                 response.contentLength = Integer.parseInt(line.substring(15).trim());
             }
-            // Hata durumlarında sadece HTTP yanıt satırını döndür
             if (response.isSuccess()) {
-                System.out.println("Header: " + line); // Print headers
+                System.out.println("Header: " + line);
             }
         }
 
-        // Read body
         if (response.contentLength > 0) {
             char[] buffer = new char[response.contentLength];
             int totalRead = 0;

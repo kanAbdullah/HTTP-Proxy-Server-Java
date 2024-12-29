@@ -1,13 +1,13 @@
-
 import java.io.*;
 import java.net.*;
 
 public class Proxy {
-
     private static final int PORT = 8888;
     private static final int MAX_REQUESTED_SIZE = 9999;
+    private static int WEB_SERVER_PORT;
 
     public static void main(String[] args) {
+        WEB_SERVER_PORT = Integer.parseInt(args[0]);
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("Proxy Server is running on port " + PORT);
 
@@ -22,7 +22,6 @@ public class Proxy {
     }
 
     static class ProxyHandler implements Runnable {
-
         private final Socket clientSocket;
 
         public ProxyHandler(Socket clientSocket) {
@@ -31,8 +30,9 @@ public class Proxy {
 
         @Override
         public void run() {
-            try (
-                    InputStream clientIn = clientSocket.getInputStream(); OutputStream clientOut = clientSocket.getOutputStream(); BufferedReader clientReader = new BufferedReader(new InputStreamReader(clientIn))) {
+            try (InputStream clientIn = clientSocket.getInputStream();
+                    OutputStream clientOut = clientSocket.getOutputStream();
+                    BufferedReader clientReader = new BufferedReader(new InputStreamReader(clientIn))) {
 
                 while (!clientSocket.isClosed()) {
                     String requestLine = clientReader.readLine();
@@ -82,11 +82,10 @@ public class Proxy {
         private void handleGetRequest(String requestLine, BufferedReader clientReader, OutputStream clientOut)
                 throws IOException, CustomException {
             String uri = extractUriFromRequestLine(requestLine);
-            // URI'den başındaki "/" karakterini kaldır
+
             if (uri.startsWith("/")) {
                 uri = uri.substring(1);
             }
-            // URI'nin bir sayı olup olmadığını kontrol edin
             int requestedSize;
             try {
                 System.out.println("Request Line.:" + requestLine);
@@ -97,7 +96,8 @@ public class Proxy {
             }
 
             if (requestedSize > MAX_REQUESTED_SIZE) {
-                throw new CustomException("414 Request-URI Too Long", "Requested file size exceeds the limit of " + MAX_REQUESTED_SIZE);
+                throw new CustomException("414 Request-URI Too Long",
+                        "Requested file size exceeds the limit of " + MAX_REQUESTED_SIZE);
             }
 
             forwardRequestToServer(requestLine, clientReader, clientOut);
@@ -115,12 +115,14 @@ public class Proxy {
 
                 return startIndex != -1 ? absoluteUri.substring(startIndex) : "/";
             }
-
-            return absoluteUri; // Default to relative URI
+            return absoluteUri;
         }
 
-        private void forwardRequestToServer(String requestLine, BufferedReader clientReader, OutputStream clientOut) throws IOException {
-            try (Socket serverSocket = new Socket("localhost", 8080); OutputStream serverOut = serverSocket.getOutputStream(); InputStream serverIn = serverSocket.getInputStream()) {
+        private void forwardRequestToServer(String requestLine, BufferedReader clientReader, OutputStream clientOut)
+                throws IOException {
+            try (Socket serverSocket = new Socket("localhost", WEB_SERVER_PORT);
+                    OutputStream serverOut = serverSocket.getOutputStream();
+                    InputStream serverIn = serverSocket.getInputStream()) {
 
                 // Rewrite the request line to use the relative URI
                 String rewrittenRequestLine = requestLine.replaceFirst("http://[^/]+", "");
@@ -145,18 +147,18 @@ public class Proxy {
                 clientOut.flush();
             } catch (ConnectException e) {
                 sendErrorResponse(clientOut, "404 Not Found", "Web Server Not Found", clientReader);
-
             }
         }
 
-        private void sendErrorResponse(OutputStream out, String status, String body, BufferedReader clientReader) throws IOException {
+        private void sendErrorResponse(OutputStream out, String status, String body, BufferedReader clientReader)
+                throws IOException {
             System.out.println("Sending error response to client: " + status);
             String response = String.format(
                     "HTTP/1.1 %s\r\nContent-Type: text/html\r\nContent-Length: %d\r\n\r\n%s",
                     status, body.getBytes().length, body);
-            // Kalan verileri atlamak için okuma işlemini temizle
+
             while (clientReader.ready()) {
-                clientReader.readLine(); // Satırları okuyarak geç
+                clientReader.readLine();
             }
 
             out.write(response.getBytes());

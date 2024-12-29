@@ -1,20 +1,15 @@
-
 import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 
 class Server {
-
-    // Main method remains the same
     public static void main(String[] args) {
         ServerSocket server = null;
         try {
-            //scanner ile port numarasının argumenti alınacak.
             int port = Integer.parseInt(args[0]);
-            // System.out.println("Port number: " + port);
             server = new ServerSocket(port);
             server.setReuseAddress(true);
-            System.err.println("Server started on port 8080");
+            System.err.println("Server started on port " + port);
             while (true) {
                 Socket client = server.accept();
                 System.out.println("New client connected: " + client.getInetAddress().getHostAddress());
@@ -46,7 +41,8 @@ class Server {
 
         @Override
         public void run() {
-            try (OutputStream out = clientSocket.getOutputStream(); BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
+            try (OutputStream out = clientSocket.getOutputStream();
+                    BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
 
                 String requestLine = in.readLine();
                 System.out.printf("Received from client: %s\n", requestLine);
@@ -54,7 +50,7 @@ class Server {
                 String headerLine;
                 System.out.println("Headers:");
                 while ((headerLine = in.readLine()) != null && !headerLine.isEmpty()) {
-                    System.out.println("\t"+headerLine);
+                    System.out.println("\t" + headerLine);
                 }
                 try {
                     int documentSize = parseRequest(requestLine);
@@ -73,7 +69,7 @@ class Server {
             } catch (IOException e) {
                 System.out.println("Error handling client: " + e.getMessage());
 
-                //e.printStackTrace();
+                // e.printStackTrace();
             } finally {
                 try {
                     clientSocket.close();
