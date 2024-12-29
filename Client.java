@@ -1,18 +1,17 @@
+
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
 
 public class Client {
+
     private static final String PROXY_HOST = "localhost";
     private static final int PROXY_PORT = 8888;
     private static final String WEB_SERVER_HOST = "localhost";
     private static final int WEB_SERVER_PORT = 8080;
 
     public static void main(String[] args) {
-        try (Socket socket = new Socket(PROXY_HOST, PROXY_PORT);
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                Scanner scanner = new Scanner(System.in)) {
+        try (Socket socket = new Socket(PROXY_HOST, PROXY_PORT); PrintWriter out = new PrintWriter(socket.getOutputStream(), true); BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream())); Scanner scanner = new Scanner(System.in)) {
 
             System.out.println("Connected to proxy server at " + PROXY_HOST + ":" + PROXY_PORT);
             System.out.println("Type 'exit' to quit");
@@ -33,17 +32,13 @@ public class Client {
 
                 // Read and process the response
                 ResponseData response = readResponse(in);
-                if (response != null && response.body != null && !response.body.isEmpty()) {
-
+                if (response != null) {
                     System.out.println("\nResponse from server:");
-                    // print response
-
+                    String fullResponse = response.toString();
+                    System.out.println(fullResponse);
+                    
                     if (response.isSuccess()) {
-
-                        System.out.println(response.body);
-                        saveResponseToFile(response.body);
-                    } else {
-                        System.out.println("Error response: " + response.body);
+                        saveResponseToFile(fullResponse);
                     }
                 }
             }
@@ -57,12 +52,24 @@ public class Client {
     }
 
     private static class ResponseData {
+
         String statusCode;
+        String headers;
         int contentLength;
         String body;
 
         boolean isSuccess() {
             return statusCode != null && statusCode.startsWith("200");
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("HTTP/1.1 ").append(statusCode).append("\n");
+            sb.append(headers);
+            sb.append("\n");
+            sb.append(body);
+            return sb.toString();
         }
     }
 
@@ -96,25 +103,28 @@ public class Client {
         // Read the HTTP response line
         String responseLine = in.readLine();
         if (responseLine == null) {
-            return null; // No response
+            return null;
         }
 
-        System.out.println("Response Line: " + responseLine);
+        // Parse status line
         String[] statusParts = responseLine.split(" ", 3);
         if (statusParts.length >= 2) {
             response.statusCode = statusParts[1];
+            System.out.println("Response Status Code: " + response.statusCode);
         }
 
+        // Read headers
+        StringBuilder headersBuilder = new StringBuilder();
         String line;
         while ((line = in.readLine()) != null && !line.isEmpty()) {
+            headersBuilder.append(line).append("\n");
             if (line.toLowerCase().startsWith("content-length:")) {
                 response.contentLength = Integer.parseInt(line.substring(15).trim());
             }
-            if (response.isSuccess()) {
-                System.out.println("Header: " + line);
-            }
         }
+        response.headers = headersBuilder.toString();
 
+        // Read body based on content-length
         if (response.contentLength > 0) {
             char[] buffer = new char[response.contentLength];
             int totalRead = 0;
@@ -126,17 +136,29 @@ public class Client {
                 totalRead += read;
             }
             response.body = new String(buffer, 0, totalRead);
+        } else {
+            // If no content-length, read until connection closes
+            StringBuilder bodyBuilder = new StringBuilder();
+            while ((line = in.readLine()) != null) {
+                bodyBuilder.append(line).append("\n");
+            }
+            response.body = bodyBuilder.toString();
         }
 
         return response;
     }
 
     private static void saveResponseToFile(String content) {
-        String filename = "response_" + System.currentTimeMillis() + ".html";
-        try (FileWriter writer = new FileWriter(filename)) {
-            writer.write(content);
-            System.out.println("Response saved to file: " + filename);
+        if (content == null || content.trim().isEmpty()) {
+            System.out.println("No content to save");
+            return;
+        }
 
+        String filename = "response_" + System.currentTimeMillis() + ".html";
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
+            writer.write(content);
+            writer.flush();
+            System.out.println("Response saved to file: " + filename);
         } catch (IOException e) {
             System.err.println("Failed to save response to file: " + e.getMessage());
         }
