@@ -1,3 +1,5 @@
+htpp 1.0 ve 1.1 
+
 If the  requested URI asks for a size less than 100, or for a size greater than 20,000, 
 or if the URL is not an integer, your server should not return any document, 
 but instead it should return a "Bad Request" message with error code 400. 

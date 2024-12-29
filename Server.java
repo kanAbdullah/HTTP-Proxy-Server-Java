@@ -7,7 +7,10 @@ class Server {
     public static void main(String[] args) {
         ServerSocket server = null;
         try {
-            server = new ServerSocket(8080);
+            //scanner ile port numarasının argumenti alınacak.
+            int port = Integer.parseInt(args[0]);
+            // System.out.println("Port number: " + port);
+            server = new ServerSocket(port);
             server.setReuseAddress(true);
             System.err.println("Server started on port 8080");
             while (true) {
@@ -93,9 +96,9 @@ class Server {
 
             if (!parts[0].equals("GET")) {
                 if (parts[0].equals("POST") || parts[0].equals("PUT") || parts[0].equals("DELETE")) {
-                    throw new NotImplementedException("Method not allowed");
+                    throw new NotImplementedException("Not Implemented");
                 }
-                throw new BadRequestException("Invalid method");
+                throw new BadRequestException("Invalid Method");
             }
 
             if (!parts[2].startsWith("HTTP/")) {
