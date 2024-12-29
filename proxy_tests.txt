@@ -1,0 +1,130 @@
+karagul@Muhammed-MBP ~ % wrk -t2 -c100 -d30s http://127.0.0.1:8888/500 
+Running 30s test @ http://127.0.0.1:8888/500
+  2 threads and 100 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    11.45ms   36.67ms 712.64ms   97.09%
+    Req/Sec     2.98k     1.92k    5.24k    66.00%
+  15668 requests in 30.06s, 8.41MB read
+  Socket errors: connect 0, read 500, write 0, timeout 108
+  Non-2xx or 3xx responses: 72
+Requests/sec:    521.15
+Transfer/sec:    286.44KB
+karagul@Muhammed-MBP ~ % wrk -t4 -c200 -d30s http://127.0.0.1:8888/500
+Running 30s test @ http://127.0.0.1:8888/500
+  4 threads and 200 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    15.48ms   49.13ms   1.90s    94.44%
+    Req/Sec     1.23k     1.05k    3.02k    45.87%
+  13427 requests in 30.06s, 7.18MB read
+  Socket errors: connect 0, read 2400, write 2, timeout 220
+  Non-2xx or 3xx responses: 131
+Requests/sec:    446.61
+Transfer/sec:    244.40KB
+karagul@Muhammed-MBP ~ % wrk -t8 -c400 -d30s http://127.0.0.1:8888/500
+Running 30s test @ http://127.0.0.1:8888/500
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    17.39ms   46.15ms   1.10s    92.60%
+    Req/Sec   509.07    557.85     2.27k    79.50%
+  12708 requests in 30.05s, 6.79MB read
+  Socket errors: connect 155, read 4175, write 6, timeout 295
+  Non-2xx or 3xx responses: 117
+Requests/sec:    422.84
+Transfer/sec:    231.50KB
+karagul@Muhammed-MBP ~ % wrk -t12 -c800 -d30s http://127.0.0.1:8888/500
+Running 30s test @ http://127.0.0.1:8888/500
+  12 threads and 800 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    18.21ms   45.55ms 528.64ms   92.52%
+    Req/Sec   357.52    419.90     2.00k    83.38%
+  12356 requests in 30.07s, 6.62MB read
+  Socket errors: connect 551, read 3840, write 15, timeout 309
+  Non-2xx or 3xx responses: 76
+Requests/sec:    410.94
+Transfer/sec:    225.57KB
+karagul@Muhammed-MBP ~ % wrk -t2 -c400 -d30s http://127.0.0.1:8888/500
+Running 30s test @ http://127.0.0.1:8888/500
+  2 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    20.16ms   58.33ms   1.18s    92.88%
+    Req/Sec     1.86k     1.83k    5.21k    47.54%
+  11498 requests in 30.06s, 6.12MB read
+  Socket errors: connect 149, read 4434, write 6, timeout 275
+  Non-2xx or 3xx responses: 159
+Requests/sec:    382.50
+Transfer/sec:    208.60KB
+karagul@Muhammed-MBP ~ % wrk -t4 -c400 -d30s http://127.0.0.1:8888/500
+Running 30s test @ http://127.0.0.1:8888/500
+  4 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    19.45ms   48.81ms 730.38ms   92.32%
+    Req/Sec     1.02k     0.98k    3.07k    55.75%
+  11597 requests in 30.06s, 6.20MB read
+  Socket errors: connect 151, read 4074, write 13, timeout 180
+  Non-2xx or 3xx responses: 98
+Requests/sec:    385.85
+Transfer/sec:    211.39KB
+karagul@Muhammed-MBP ~ % wrk -t8 -c400 -d30s http://127.0.0.1:8888/500
+Running 30s test @ http://127.0.0.1:8888/500
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    21.58ms   77.03ms   1.11s    92.46%
+    Req/Sec   438.64    512.69     2.49k    84.56%
+  12167 requests in 30.08s, 6.49MB read
+  Socket errors: connect 155, read 3978, write 22, timeout 301
+  Non-2xx or 3xx responses: 151
+Requests/sec:    404.47
+Transfer/sec:    220.85KB
+karagul@Muhammed-MBP ~ % wrk -t12 -c400 -d30s http://127.0.0.1:8888/500
+Running 30s test @ http://127.0.0.1:8888/500
+  12 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    18.32ms   87.28ms   1.92s    96.66%
+    Req/Sec   380.70    395.43     1.69k    80.22%
+  14587 requests in 30.06s, 7.86MB read
+  Socket errors: connect 155, read 1999, write 11, timeout 445
+Requests/sec:    485.27
+Transfer/sec:    267.75KB
+karagul@Muhammed-MBP ~ % wrk -t8 -c100 -d30s http://127.0.0.1:8888/500
+Running 30s test @ http://127.0.0.1:8888/500
+  8 threads and 100 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    12.41ms   47.41ms 702.93ms   97.06%
+    Req/Sec   677.68    571.93     1.86k    48.66%
+  15749 requests in 30.06s, 8.49MB read
+  Socket errors: connect 0, read 379, write 0, timeout 139
+Requests/sec:    523.96
+Transfer/sec:    289.10KB
+karagul@Muhammed-MBP ~ % wrk -t8 -c200 -d30s http://127.0.0.1:8888/500
+Running 30s test @ http://127.0.0.1:8888/500
+  8 threads and 200 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    18.75ms   66.95ms   1.90s    93.73%
+    Req/Sec   504.79    479.58     1.65k    50.41%
+  12377 requests in 30.06s, 6.62MB read
+  Socket errors: connect 0, read 3148, write 0, timeout 211
+  Non-2xx or 3xx responses: 98
+Requests/sec:    411.70
+Transfer/sec:    225.65KB
+karagul@Muhammed-MBP ~ % wrk -t8 -c400 -d30s http://127.0.0.1:8888/500
+Running 30s test @ http://127.0.0.1:8888/500
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    18.00ms   62.59ms   1.91s    93.78%
+    Req/Sec   514.12    579.29     2.13k    82.88%
+  11883 requests in 30.06s, 6.35MB read
+  Socket errors: connect 155, read 3711, write 6, timeout 296
+  Non-2xx or 3xx responses: 114
+Requests/sec:    395.28
+Transfer/sec:    216.35KB
+karagul@Muhammed-MBP ~ % wrk -t8 -c800 -d30s http://127.0.0.1:8888/500
+Running 30s test @ http://127.0.0.1:8888/500
+  8 threads and 800 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    17.03ms   43.92ms 508.96ms   92.98%
+    Req/Sec   453.33    559.99     2.61k    84.40%
+  12059 requests in 30.06s, 6.47MB read
+  Socket errors: connect 555, read 3973, write 6, timeout 313
+  Non-2xx or 3xx responses: 71
+Requests/sec:    401.13
+Transfer/sec:    220.24KB
