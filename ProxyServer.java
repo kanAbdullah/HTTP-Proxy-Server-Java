@@ -32,17 +32,19 @@ public class ProxyServer {
         @Override
         public void run() {
             try (
-                    InputStream clientIn = clientSocket.getInputStream(); OutputStream clientOut = clientSocket.getOutputStream(); BufferedReader clientReader = new BufferedReader(new InputStreamReader(clientIn))) {
-                // Burada while döngüsü ekleyerek birden fazla isteği işleyebiliriz
+                    InputStream clientIn = clientSocket.getInputStream();
+                    OutputStream clientOut = clientSocket.getOutputStream();
+                    BufferedReader clientReader = new BufferedReader(new InputStreamReader(clientIn))) {
+
                 while (!clientSocket.isClosed()) {
                     String requestLine = clientReader.readLine();
 
                     if (requestLine == null) {
-                        break; // Client bağlantıyı kapattı
+                        break;
                     }
 
                     if (requestLine.isEmpty()) {
-                        continue; // Boş satırı atla
+                        continue;
                     }
 
                     if (requestLine.startsWith("GET")) {
@@ -64,11 +66,13 @@ public class ProxyServer {
             }
         }
 
-        private void handleGetRequest(String requestLine, BufferedReader clientReader, OutputStream clientOut) throws IOException {
+        private void handleGetRequest(String requestLine, BufferedReader clientReader, OutputStream clientOut)
+                throws IOException {
             String uri = extractUriFromRequestLine(requestLine);
 
             if (uri.length() > MAX_URI_LENGTH) {
-                sendErrorResponse(clientOut, "414 Request-URI Too Long", "URI length exceeds the limit of " + MAX_URI_LENGTH);
+                sendErrorResponse(clientOut, "414 Request-URI Too Long",
+                        "URI length exceeds the limit of " + MAX_URI_LENGTH);
                 return;
             }
 
@@ -90,8 +94,11 @@ public class ProxyServer {
             return absoluteUri; // Default to relative URI
         }
 
-        private void forwardRequestToServer(String requestLine, BufferedReader clientReader, OutputStream clientOut, String uri) throws IOException {
-            try (Socket serverSocket = new Socket("localhost", 8080); OutputStream serverOut = serverSocket.getOutputStream(); InputStream serverIn = serverSocket.getInputStream()) {
+        private void forwardRequestToServer(String requestLine, BufferedReader clientReader, OutputStream clientOut,
+                String uri) throws IOException {
+            try (Socket serverSocket = new Socket("localhost", 8080);
+                    OutputStream serverOut = serverSocket.getOutputStream();
+                    InputStream serverIn = serverSocket.getInputStream()) {
 
                 // Rewrite the request line to use the relative URI
                 String rewrittenRequestLine = requestLine.replaceFirst("http://[^/]+", "");
@@ -122,8 +129,7 @@ public class ProxyServer {
         private void sendErrorResponse(OutputStream out, String status, String body) throws IOException {
             String response = String.format(
                     "HTTP/1.1 %s\r\nContent-Type: text/html\r\nContent-Length: %d\r\n\r\n%s",
-                    status, body.getBytes().length, body
-            );
+                    status, body.getBytes().length, body);
             out.write(response.getBytes());
             out.flush();
         }
