@@ -92,13 +92,14 @@ public class ProxyServer {
                 // Rewrite the request line to use the relative URI
                 String rewrittenRequestLine = requestLine.replaceFirst("http://[^/]+", "");
                 serverOut.write((rewrittenRequestLine + "\r\n").getBytes());
-
+                System.out.println("Forwarded request to web server: " + rewrittenRequestLine);
                 // Forward additional headers
                 String headerLine;
                 while ((headerLine = clientReader.readLine()) != null && !headerLine.isEmpty()) {
                     serverOut.write((headerLine + "\r\n").getBytes());
                 }
                 serverOut.write("\r\n".getBytes());
+                System.out.println("Forwarded additional headers to web server");
                 serverOut.flush();
 
                 // Relay response from web server to client
@@ -107,6 +108,7 @@ public class ProxyServer {
                 while ((bytesRead = serverIn.read(buffer)) != -1) {
                     clientOut.write(buffer, 0, bytesRead);
                 }
+                System.out.println("Relayed response from web server to client");
                 clientOut.flush();
             } catch (ConnectException e) {
                 sendErrorResponse(clientOut, "404 Not Found", "Web Server Not Found");
