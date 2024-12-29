@@ -1,8 +1,10 @@
+
 import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 
 class Server {
+
     // Main method remains the same
     public static void main(String[] args) {
         ServerSocket server = null;
@@ -20,12 +22,14 @@ class Server {
                 new Thread(clientSock).start();
             }
         } catch (IOException e) {
+            System.err.println("Server Connection error : " + e.getMessage());
             e.printStackTrace();
         } finally {
             if (server != null) {
                 try {
                     server.close();
                 } catch (IOException e) {
+                    System.out.println("Failed to close server socket: " + e.getMessage());
                     e.printStackTrace();
                 }
             }
@@ -33,6 +37,7 @@ class Server {
     }
 
     private static class ClientHandler implements Runnable {
+
         private final Socket clientSocket;
 
         public ClientHandler(Socket socket) {
@@ -41,12 +46,16 @@ class Server {
 
         @Override
         public void run() {
-            try (OutputStream out = clientSocket.getOutputStream();
-                    BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
+            try (OutputStream out = clientSocket.getOutputStream(); BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
 
                 String requestLine = in.readLine();
                 System.out.printf("Received from client: %s\n", requestLine);
-
+                // Header'ları okuyun ve printleyin
+                String headerLine;
+                System.out.println("Headers:");
+                while ((headerLine = in.readLine()) != null && !headerLine.isEmpty()) {
+                    System.out.println("\t"+headerLine);
+                }
                 try {
                     int documentSize = parseRequest(requestLine);
                     String document = createDocument(documentSize);
@@ -62,23 +71,28 @@ class Server {
                 }
 
             } catch (IOException e) {
-                e.printStackTrace();
+                System.out.println("Error handling client: " + e.getMessage());
+
+                //e.printStackTrace();
             } finally {
                 try {
                     clientSocket.close();
                 } catch (IOException e) {
+                    System.out.println("Failed to close client socket: " + e.getMessage());
                     e.printStackTrace();
                 }
             }
         }
 
         private static class BadRequestException extends Exception {
+
             public BadRequestException(String message) {
                 super(message);
             }
         }
 
         private static class NotImplementedException extends Exception {
+
             public NotImplementedException(String message) {
                 super(message);
             }
@@ -183,8 +197,12 @@ class Server {
             out.write(response.toString().getBytes(StandardCharsets.UTF_8));
             out.write(bodyBytes);
             out.flush();
+            if (response.toString().contains("200 OK")) {
+                System.out.println("Response sent. Content-Length: " + bodyBytes.length);
+            } else {
+                System.out.println("Response sent. Status: " + status);
+            }
 
-            System.out.println("Response sent. Content-Length: " + bodyBytes.length);
         }
     }
 }

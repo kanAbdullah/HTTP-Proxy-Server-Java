@@ -1,18 +1,17 @@
+
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
 
 public class Client {
+
     private static final String PROXY_HOST = "localhost";
     private static final int PROXY_PORT = 8888;
     private static final String WEB_SERVER_HOST = "localhost";
     private static final int WEB_SERVER_PORT = 8080;
 
     public static void main(String[] args) {
-        try (Socket socket = new Socket(PROXY_HOST, PROXY_PORT);
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                Scanner scanner = new Scanner(System.in)) {
+        try (Socket socket = new Socket(PROXY_HOST, PROXY_PORT); PrintWriter out = new PrintWriter(socket.getOutputStream(), true); BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream())); Scanner scanner = new Scanner(System.in)) {
 
             System.out.println("Connected to proxy server at " + PROXY_HOST + ":" + PROXY_PORT);
             System.out.println("Type 'exit' to quit");
@@ -34,11 +33,13 @@ public class Client {
                 // Read and process the response
                 ResponseData response = readResponse(in);
                 if (response != null && response.body != null && !response.body.isEmpty()) {
+
                     System.out.println("\nResponse from server:");
-                    System.out.println("Status: " + response.statusCode);
-                    System.out.println("Content-Length: " + response.contentLength);
+                    //print response
 
                     if (response.isSuccess()) {
+
+                        System.out.println(response.body);
                         saveResponseToFile(response.body);
                     } else {
                         System.out.println("Error response: " + response.body);
@@ -55,8 +56,10 @@ public class Client {
     }
 
     private static class ResponseData {
+
         String statusCode;
         int contentLength;
+        String contentType;
         String body;
 
         boolean isSuccess() {
@@ -90,19 +93,28 @@ public class Client {
 
     private static ResponseData readResponse(BufferedReader in) throws IOException {
         ResponseData response = new ResponseData();
-        String line = in.readLine();
 
-        if (line == null) {
-            return null;
+        // Read the HTTP response line
+        String responseLine = in.readLine();
+        if (responseLine == null) {
+            return null; // No response
         }
 
-        // Parse status line
-        response.statusCode = line.split(" ")[1];
+        System.out.println("Response Line: " + responseLine); // Print the response line
+        String[] statusParts = responseLine.split(" ", 3);
+        if (statusParts.length >= 2) {
+            response.statusCode = statusParts[1]; // Extract status code
+        }
 
         // Read headers
+        String line;
         while ((line = in.readLine()) != null && !line.isEmpty()) {
             if (line.toLowerCase().startsWith("content-length:")) {
                 response.contentLength = Integer.parseInt(line.substring(15).trim());
+            }
+            // Hata durumlarında sadece HTTP yanıt satırını döndür
+            if (response.isSuccess()) {
+                System.out.println("Header: " + line); // Print headers
             }
         }
 
@@ -129,9 +141,6 @@ public class Client {
             writer.write(content);
             System.out.println("Response saved to file: " + filename);
 
-            // Verify file size
-            File savedFile = new File(filename);
-            System.out.println("Saved file size: " + savedFile.length() + " bytes");
         } catch (IOException e) {
             System.err.println("Failed to save response to file: " + e.getMessage());
         }
